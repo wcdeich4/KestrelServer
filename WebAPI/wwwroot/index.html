@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>test page</title>
+<link rel="stylesheet" type="text/css" href="teststyles.css">
+</head>
+<body>
+<button id="alertButtonId" onclick="alertFunction()">Click for Alert Box</button>  <!--  .//*[@id='alertButtonId']  -->
+<br />
+<br />
+<br />
+<button id="promptButtonId" onclick="promptFunction()">Click For Prompt Box</button>  <!--  .//*[@id='promptButtonId']  -->
+<p id="nameParagraphId"></p>
+<br />
+
+<button id="showDivButtonId" onClick="showDiv()">Show Div</button>
+<button id="hideDivButtonId" onClick="hideDiv()">Hide Div</button>
+<div class="hiddenStyle" id="hiddenDivId">
+<label id="hiddenTextId">Text In Div</label>
+</div>
+<br /> 
+<br /> 
+<br />
+
+<form id="testForm1" onsubmit="return processForm1()" method="post">
+<label id="lblTestForm1">Custom Text Alert Box Form:</label> <br />
+<input type="text" id="txtBoxTestForm1Id" name="txtBoxTestForm1Name" required> <br />
+<select id="selectListDrowDownID">
+  <option value="ANY">Choose Car Model</option>
+  <option value="volvo">Volvo</option>
+  <option value="saab">Saab</option>
+  <option value="dodge">Dodge</option>
+  <option value="opel">Opel</option>
+  <option value="audi">Audi</option>
+</select> <br />
+<input id="btnSubmitTestForm1Id" type="submit" value="Submit">
+<input  type="button" id="btnDisableSubmitButtonTestForm1Id" onclick="disableSubmitButton()" value="Disable Submit Button"> <br />
+<input type="button" onclick="resetTestForm1()" value="Reset">
+<input  type="button" id="btnEnableSubmitButtonTestForm1Id" onclick="enableSubmitButton()" value="Enable Submit Button">
+</form>
+
+<br />
+<br />
+
+<button id="btnOpenPopUpWindowId" onclick="openPopUpWindow()">Open PopUp Window</button>
+<button id="btnOpenPopUpWindowId" onclick="closePopUpWindow()">Close PopUp Window</button>
+
+<br />
+<br />
+
+<form id="testForm2" onsubmit="return processForm2()" method="post">
+<input type="radio" name="radioButtonName" id="rbtn1Id" value="Radio Button 1 selected"  checked>Radio Button 1 <br />
+<input type="radio" name="radioButtonName" id="rbtn2Id" value="Radio Button 2 selected">Radio Button 2 <br />
+<input id="btnSubmitTestForm1Id" type="submit" value="Submit">
+</form> 
+
+
+<script src="testscript.js"></script>
+</body>
+</html>
