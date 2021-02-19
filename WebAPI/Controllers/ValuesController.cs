@@ -10,6 +10,14 @@ namespace WebAPI.Controllers
     [Route("api/[controller]")]
     public class ValuesController : ControllerBase
     {
+        
+
+        public ValuesController()
+        {
+
+        }
+
+
         // GET api/values
         [EnableCors("*")] //??? doing anything?
         [HttpGet]
