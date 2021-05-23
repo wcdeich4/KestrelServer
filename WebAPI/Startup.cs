@@ -1,7 +1,8 @@
+using System;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
-using Microsoft.AspNetCore.SpaServices.AngularCli;
+//using Microsoft.AspNetCore.SpaServices.AngularCli;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -38,48 +39,18 @@ namespace WebAPI
             });
 
             services.AddControllersWithViews();
-            // In production, the Angular files will be served from this directory
-            services.AddSpaStaticFiles(configuration =>
-            {
-                configuration.RootPath = "wwwroot";
-            });
+ 
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
-            app.UseCors();
-
-            app.Use((context, next) =>
-            {
-                context.Items["__CorsMiddlewareInvoked"] = true;
-                return next();
-            });
-
-
-            singletonDictionary = SingletonDictionary.GetInstance();
-            singletonDictionary.AddOrUpdate("env.WebRootPath", env.WebRootPath);
-            singletonDictionary.AddOrUpdate("env.ContentRootPath", env.ContentRootPath);
-
-            if (env.IsDevelopment())
-            {
-                app.UseDeveloperExceptionPage();
-            }
-            else
-            {
-                app.UseExceptionHandler("/Error");
-                // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-                app.UseHsts();
-            }
-
             app.UseRouting();
             app.UseDefaultFiles();
 
             StaticFileOptions staticFileOptions = new StaticFileOptions();
             staticFileOptions.ServeUnknownFileTypes = true;
             app.UseStaticFiles(staticFileOptions);
-
-
 
             //app.UseFileServer();  //shorthand for app.UseDefaultFiles(); app.UseStaticFiles();
             //app.UseHttpsRedirection(); //only works with a SSL Certificate
@@ -90,23 +61,35 @@ namespace WebAPI
                     pattern: "{controller}/{action=Index}/{id?}");
             });
 
-         //   app.UseSpa(x => {});
-
-            app.UseSpa(spa =>
+            app.UseCors();
+            app.Use((context, next) =>
             {
-                // To learn more about options for serving an Angular SPA from ASP.NET Core,
-                // see https://go.microsoft.com/fwlink/?linkid=864501
-
-                spa.Options.SourcePath = "wwwroot";  //???????????????
-
-             //   if (env.IsDevelopment()){spa.UseAngularCliServer(npmScript: "start");}
+                context.Items["__CorsMiddlewareInvoked"] = true;
+                return next();
             });
-            
-            if (!env.IsDevelopment())
+
+            bool useHsts = Convert.ToBoolean(this.Configuration["UseHttpStrictTransportSecurityProtocol"]);
+            if (useHsts)
             {
-                app.UseSpaStaticFiles();
+                app.UseHsts(); 
+                //The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts
             }
 
+            string CustomErrorsMode = Convert.ToString(this.Configuration["CustomErrorsMode"]);
+            if (CustomErrorsMode == "On")
+            {
+                app.UseExceptionHandler("/Error");
+            }
+            else
+            {
+                //if (env.IsDevelopment()) in template
+                app.UseDeveloperExceptionPage();
+            }
+
+            //recording default env.WebRootPath and env.ContentRootPath for testing
+            singletonDictionary = SingletonDictionary.GetInstance();
+            singletonDictionary.AddOrUpdate("env.WebRootPath", env.WebRootPath);
+            singletonDictionary.AddOrUpdate("env.ContentRootPath", env.ContentRootPath);
         }
     }
 }
