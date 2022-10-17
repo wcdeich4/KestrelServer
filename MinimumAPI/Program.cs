@@ -3,8 +3,14 @@ using System.Text.Json;
 //create web application builder with web root path for static files
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
-    Args = args,
+    Args = args, //public static void Main(string[] args) is implied in minimal api .NET 6+
     WebRootPath = "wwwroot"
+});
+
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(2);
+    serverOptions.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(1);
 });
 
 //specify configuration file
