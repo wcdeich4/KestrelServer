@@ -1,0 +1,9 @@
+newmtl InitialMaterial
+illum 4
+Kd 0.6 0.6 0.6 
+Ka 0.2 0.2 0.2 
+map_Kd Scale.jpg
+Ns 1
+Ks 0.2 0.2 0.2 
+Ke 0 0 0 
+

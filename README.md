@@ -1,2 +1,4 @@
 # KestrelServer
-simple .NET 6 Kestrel WebAPI server example
+simple .NET 10 Kestrel WebAPI server example
+
+

@@ -3,6 +3,7 @@
 Imports System.Threading
 Public Class SingletonDictionary
     Inherits FlexibleDictionary(Of String, Object)
+    Implements IDictionary(Of String, Object), IFlexibleDictionary(Of String, Object)
 
     ' For SyncLock to mark a critical section
     Private Shared classLocker As New Object()

@@ -3,6 +3,7 @@ Imports System.Runtime.Serialization
 
 Public Class FlexibleDictionary(Of TKey,TValue)
     Inherits Dictionary(Of TKey, TValue)
+    Implements IFlexibleDictionary(Of TKey, TValue)
 
     Public Sub New()
          MyBase.New()
@@ -32,7 +33,7 @@ Public Class FlexibleDictionary(Of TKey,TValue)
          MyBase.New(info, context)
     End Sub
 
-    Public Sub AddOrUpdate(key As TKey, value As TValue)
+    Public Sub AddOrUpdate(key As TKey, value As TValue) Implements IFlexibleDictionary(Of TKey, TValue).AddOrUpdate
         If Me.ContainsKey(key) Then
             Me(key) = value
         Else
@@ -40,7 +41,7 @@ Public Class FlexibleDictionary(Of TKey,TValue)
         End If
     End Sub
 
-    Public Function SubstituteIfFound(key As TKey) As TValue
+    Public Function SubstituteIfFound(key As TKey) As TValue Implements IFlexibleDictionary(Of TKey, TValue).SubstituteIfFound
         If Me.ContainsKey(key) Then
             return Me(key)
         Else
@@ -48,4 +49,30 @@ Public Class FlexibleDictionary(Of TKey,TValue)
         End If
     End Function
 
+    Public Function ContainsKeyEndingWith(suffix As String) As Boolean Implements IFlexibleDictionary(Of TKey, TValue).ContainsKeyEndingWith
+        For Each key As TKey In Me.Keys
+            If Convert.ChangeType(key, GetType(String)).EndsWith(suffix) Then
+                Return True
+            End If
+        Next
+        Return False
+    End Function
+
+    Public Function GetValueByKeyEndingWith(suffix As String) As TValue Implements IFlexibleDictionary(Of TKey, TValue).GetValueByKeyEndingWith
+        For Each key As TKey In Me.Keys
+            If Convert.ChangeType(key, GetType(String)).EndsWith(suffix) Then
+                Return Me(key)
+            End If
+        Next
+        Return Nothing
+    End Function
+    
+    Public Function GetKeyEndingWith(suffix As String) As TKey Implements IFlexibleDictionary(Of TKey, TValue).GetKeyEndingWith
+        For Each key As TKey In Me.Keys
+            If Convert.ChangeType(key, GetType(String)).EndsWith(suffix) Then
+                Return key
+            End If
+        Next
+        Return Nothing
+    End Function
 End Class
