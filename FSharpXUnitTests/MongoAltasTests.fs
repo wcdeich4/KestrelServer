@@ -19,7 +19,7 @@ type MongoAltasTestsFixture() =
         
     [<Fact>]
     let ``insert and find`` () =
-        let mongoContext = new MongoContext(connectionUri)
+        let mongoContext: IMongoContext = new MongoContext(connectionUri)
         let newEntry = new KeyValueWithId()
         newEntry.Id <- ObjectId.GenerateNewId()
         newEntry.Key <- "TestKey1"
@@ -39,7 +39,7 @@ type MongoAltasTestsFixture() =
 
     [<Fact>]
     let ``insert and delete`` () =
-        let mongoContext = new MongoContext(connectionUri)
+        let mongoContext: IMongoContext = new MongoContext(connectionUri)
         let newEntry = new KeyValueWithId()
         newEntry.Id <- ObjectId.GenerateNewId()
         newEntry.Key <- "TestKey1"
@@ -49,7 +49,7 @@ type MongoAltasTestsFixture() =
         mongoContext.Insert<KeyValueWithId>("TestDB1", "KeyValueWithIdTable", KeyValueWithIdList)
 
         let filter = Builders<KeyValueWithId>.Filter.Eq("Key", "TestKey1")
-        mongoContext.DeleteMany<KeyValueWithId>("TestDB1", "KeyValueWithIdTable", filter)
+        mongoContext.Delete<KeyValueWithId>("TestDB1", "KeyValueWithIdTable", filter)
 
         let found = mongoContext.Find<KeyValueWithId>("TestDB1", "KeyValueWithIdTable", filter)
         let mutable foundInsertedID = false

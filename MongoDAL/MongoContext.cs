@@ -18,6 +18,13 @@ public class MongoContext : IMongoContext
     this.connectionUri = uri;
   }
 
+  /// <summary>
+  /// Insert multiple documents into collection
+  /// </summary>
+  /// <typeparam name="T"></typeparam>
+  /// <param name="databaseName"></param>
+  /// <param name="collectionName"></param>
+  /// <param name="entityList"></param>
   public void Insert<T>(string databaseName, string collectionName, IEnumerable<T> entityList)
   {
     var settings = MongoClientSettings.FromConnectionString(connectionUri);
@@ -28,53 +35,8 @@ public class MongoContext : IMongoContext
     collection.InsertMany(entityList);
   }
 
-
-
-
-  // /// <summary>
-  // /// working??????????????????????????????????????????????????????????????????????????????????????????????????????
-  // /// </summary>
-  // /// <typeparam name="T"></typeparam>
-  // /// <param name="databaseName"></param>
-  // /// <param name="collectionName"></param>
-  // /// <param name="entityList"></param>
-  // /// <param name="idPropertyName"></param>
-  // /// <returns></returns>
-  // public Task<BulkWriteResult<T>> BulkWriteAsync<T>(string databaseName, string collectionName, IEnumerable<T> entityList, string idPropertyName)
-  // {
-  //   var settings = MongoClientSettings.FromConnectionString(connectionUri);
-  //   settings.ServerApi = new ServerApi(ServerApiVersion.V1);
-  //   this.client = new MongoClient(settings);
-  //   var database = this.client.GetDatabase(databaseName); //creates database if it does not exist
-  //   var collection = database.GetCollection<T>(collectionName);
-  //   var bulkOps = new List<WriteModel<T>>();
-  //   foreach (var obj in entityList)
-  //   {
-  //     if (obj != null)
-  //     {
-  //       Type type = obj.GetType();
-  //       PropertyInfo? propInfo = type.GetProperty(idPropertyName);
-  //       if(propInfo is not null)
-  //       {
-  //         object? idObject = propInfo.GetValue(obj, null);
-  //         string idString = (string)Convert.ChangeType(idObject, typeof(string));
-  //         if(!string.IsNullOrWhiteSpace(idString))
-  //         {
-  //           var filter = Builders<T>.Filter.Eq(idPropertyName, idString);
-  //           var model = new ReplaceOneModel<T>(filter, obj);
-  //           // {
-  //           //     IsUpsert = true
-  //           // };
-  //           bulkOps.Add(model);
-  //         }
-  //       }
-  //     }
-  //   }
-  //   return collection.BulkWriteAsync(bulkOps);
-  // }
-
   /// <summary>
-  /// 
+  /// Find documents matching filter
   /// </summary>
   /// <typeparam name="T">document type</typeparam>
   /// <param name="databaseName"></param>
@@ -92,14 +54,14 @@ public class MongoContext : IMongoContext
   }
 
   /// <summary>
-  /// 
+  /// Delete documents matching filter
   /// </summary>
   /// <typeparam name="T"></typeparam>
   /// <param name="databaseName"></param>
   /// <param name="collectionName"></param>
   /// <param name="filter"></param>
   /// <returns></returns>
-  public DeleteResult DeleteMany<T>(string databaseName, string collectionName, FilterDefinition<T> filter)
+  public DeleteResult Delete<T>(string databaseName, string collectionName, FilterDefinition<T> filter)
   {
     var settings = MongoClientSettings.FromConnectionString(connectionUri);
     settings.ServerApi = new ServerApi(ServerApiVersion.V1);
