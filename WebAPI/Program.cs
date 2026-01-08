@@ -1,10 +1,14 @@
+using System;
 using System.IO;
-using Microsoft.AspNetCore.Hosting;
 using System.Security.Authentication;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using System.Collections.Generic;
+using MongoDB.Bson;
+using MongoDB.Driver;
+using MongoDAL;
 using BasicObjects;
-using Microsoft.AspNetCore.Mvc;
 
 //create WebApplicationBuilder
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -24,6 +28,7 @@ builder.Services.AddCors(options => //add CORS policy to allow any header and me
 {
   options.AddDefaultPolicy(builder =>
   {
+    builder.AllowAnyOrigin();
     builder.AllowAnyHeader();
     builder.AllowAnyMethod();
   });
@@ -59,36 +64,46 @@ app.Use((context, next) => //hack to avoid "InvalidOperationException: No authen
 app.UseCors();
 
 /// <summary>
-/// Define a minimal API endpoint to list of filenames to get a list of filenames in the wwwroot folder.
-/// <param name="pattern">"/filelist" is the API path</param>
-/// <param name="handler">([FromKeyedServices("FileDictionary")] IFlexibleDictionary<string, FileRecord> fileCache) Lambda function to handle the request</param>
+/// Define a minimal API endpoint to list of filenames to get a list of filenames in the FilesFolder.
+/// <param name="pattern">"/localfilelist" is the API path</param>
+/// <param name="handler">([FromKeyedServices("FileDictionary")] IFlexibleDictionary<string, FileRecord> fileCache, IConfiguration config) Lambda function to handle the request</param>
 /// </summary>
-app.MapGet("/filelist", ([FromKeyedServices("FileDictionary")] IFlexibleDictionary<string, FileRecord> fileCache) =>
+app.MapGet("/localfilelist", ([FromKeyedServices("FileDictionary")] IFlexibleDictionary<string, FileRecord> fileCache, IConfiguration config) =>
 {
-  //app.Environment.WebRootPath gives you the current wwwroot folder path, regardless of how/if it was set above
-  readFileNames(app.Environment.WebRootPath, fileCache);
-  string[] files = [.. fileCache.Keys];
-  for(int i=0; i<files.Length; i++)
+  //app.Environment.WebRootPath would gives you the current wwwroot folder path, regardless of how/if it was set above, but using wwwroot is not safe
+  string[] fileNameArray = [];
+  string? folderPath = config["FilesFolder"];
+  if(!string.IsNullOrWhiteSpace(folderPath))
   {
-    fileCache.AddOrUpdate(files[i], new FileRecord(Path.GetFileName(files[i])));
-    files[i] = Path.GetFileName(files[i]);
+    readFileNames(folderPath, fileCache);
+    string[] files = [.. fileCache.Keys];
+    for(int i=0; i<files.Length; i++)
+    {
+      fileCache.AddOrUpdate(files[i], new FileRecord(Path.GetFileName(files[i])));
+      files[i] = Path.GetFileName(files[i]);
+    }
+    fileNameArray = files;
   }
-  return files;
+  return Results.Ok(fileNameArray);
 })
 .WithName("GetFileList");
 
 /// <summary>
 /// Define a minimal API endpoint to get file contents.
-/// <param name="pattern">"/filecontent/{fileName}" is the API path with fileName API parameter</param>
-/// <param name="handler">([FromRoute] string fileName, [FromKeyedServices("FileDictionary")] IFlexibleDictionary<string, FileRecord> fileCache) Lambda function to handle the request</param>
+/// <param name="pattern">"/localfilecontent/{fileName}" is the API path with fileName API parameter</param>
+/// <param name="handler">([FromRoute] string fileName, [FromKeyedServices("FileDictionary")] IFlexibleDictionary<string, FileRecord> fileCache, IConfiguration config) Lambda function to handle the request</param>
 /// </summary>
-app.MapGet("/filecontent/{fileName}", ([FromRoute] string fileName, 
-                                    [FromKeyedServices("FileDictionary")] IFlexibleDictionary<string, FileRecord> fileCache) =>
+app.MapGet("/localfilecontent/{fileName}", ([FromRoute] string fileName, [FromKeyedServices("FileDictionary")] IFlexibleDictionary<string, FileRecord> fileCache, IConfiguration config) =>
 {
   //check if the file is in the cache, look for it
   if(!fileCache.ContainsKeyEndingWith(fileName))
   {
-    readFileNames(app.Environment.WebRootPath, fileCache);
+    //app.Environment.WebRootPath would gives you the current wwwroot folder path, regardless of how/if it was set above, but using wwwroot is not safe
+    string? folderPath = config["FilesFolder"];
+    if (!string.IsNullOrWhiteSpace(folderPath))
+    {
+      readFileNames(folderPath, fileCache);
+    }
   }
   //if the file is still not found, it does not exist
   string fullPath = fileCache.GetKeyEndingWith(fileName);
@@ -111,6 +126,172 @@ app.MapGet("/filecontent/{fileName}", ([FromRoute] string fileName,
   }
 })
 .WithName("GetFileContent");
+
+/// <summary>
+/// Define a minimal API endpoint to get file contents from MongoDB.
+/// <param name="pattern">"/GetMongoFileContent/{fileName}" is the API path</param>
+/// <param name="handler">([FromRoute] string fileName, IConfiguration config) Lambda function to handle the request</param>
+/// </summary>
+app.MapGet("/GetMongoFileContent/{fileName}", ([FromRoute] string fileName, IConfiguration config) =>
+{
+  string? MongoConnectionUri = config["ConnectionStrings:MongoConnectionUri"];
+  if(string.IsNullOrWhiteSpace(MongoConnectionUri))
+  {
+    string errorMessage = "config[\"ConnectionStrings:MongoConnectionUri\"] was null/empty/whitespace";
+    Console.WriteLine(errorMessage);
+    return Results.NotFound(errorMessage);
+  }
+  else
+  {
+    var mongoContext = new MongoContext(MongoConnectionUri);
+    var filter = Builders<FileRecord>.Filter.Eq("Name", fileName);
+    string? MongoDBAtlasDatabaseName = config["MongoDBAtlasDatabaseName"];
+    string? MongoDBAtlasCollectionName = config["MongoDBAtlasCollectionName"];
+    if(string.IsNullOrWhiteSpace(MongoDBAtlasDatabaseName) || string.IsNullOrWhiteSpace(MongoDBAtlasCollectionName))
+    {
+      string errorMessage = "config[\"MongoDBAtlasDatabaseName\"] or config[\"MongoDBAtlasCollectionName\"] was null/empty/whitespace";
+      Console.WriteLine(errorMessage);
+      return Results.InternalServerError(errorMessage);
+    }
+    else
+    {
+      FileRecord findResult = mongoContext.FindOne<FileRecord>(MongoDBAtlasDatabaseName, MongoDBAtlasCollectionName, filter);
+      if (findResult == null || string.IsNullOrWhiteSpace(findResult.Contents))
+      {
+        return Results.NotFound($"File '{fileName}' not found in MongoDB.");
+      }
+      else
+      {
+        return Results.Ok(findResult.Contents);
+      }
+    }
+  }
+})
+.WithName("GetMongoFileContent"); //does not have to be exact match, but must be unique
+
+/// <summary>
+/// Define a minimal API endpoint to delete from MongoDB.
+/// <param name="pattern">"/GetMongoFileContent/{fileName}" is the API path</param>
+/// <param name="handler">([FromRoute] string fileName, IConfiguration config) Lambda function to handle the request</param>
+/// </summary>
+app.MapGet("/DeleteMongoFile/{fileName}", ([FromRoute] string fileName, IConfiguration config) =>
+{
+  string? MongoConnectionUri = config["ConnectionStrings:MongoConnectionUri"];
+  if(string.IsNullOrWhiteSpace(MongoConnectionUri))
+  {
+    string errorMessage = "config[\"ConnectionStrings:MongoConnectionUri\"] was null/empty/whitespace";
+    Console.WriteLine(errorMessage);
+    return Results.NotFound(errorMessage);
+  }
+  else
+  {
+    var mongoContext = new MongoContext(MongoConnectionUri);
+    var filter = Builders<FileRecord>.Filter.Eq("Name", fileName);
+    string? MongoDBAtlasDatabaseName = config["MongoDBAtlasDatabaseName"];
+    string? MongoDBAtlasCollectionName = config["MongoDBAtlasCollectionName"];
+    if(string.IsNullOrWhiteSpace(MongoDBAtlasDatabaseName) || string.IsNullOrWhiteSpace(MongoDBAtlasCollectionName))
+    {
+      string errorMessage = "config[\"MongoDBAtlasDatabaseName\"] or config[\"MongoDBAtlasCollectionName\"] was null/empty/whitespace";
+      Console.WriteLine(errorMessage);
+      return Results.InternalServerError(errorMessage);
+    }
+    else
+    {
+      DeleteResult deleteResult = mongoContext.Delete<FileRecord>(MongoDBAtlasDatabaseName, MongoDBAtlasCollectionName, filter);
+      if (deleteResult == null)
+      {
+        return Results.NotFound($"File '{fileName}' not found in MongoDB.");
+      }
+      else
+      {
+        return Results.Ok();
+      }
+    }
+  }
+})
+.WithName("DeleteMongoFile"); //does not have to be exact match, but must be unique
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/// <summary>
+/// Define a minimal API endpoint to Post file contents.
+/// <param name="pattern">"/PostMongoFileContent" </param>
+/// <param name="handler">(FileRecord fileDataToInsert, IConfiguration config) Lambda function to handle the request</param>
+/// </summary>
+app.MapPost("/PostMongoFileContent", (FileRecord fileDataToInsert, IConfiguration config) => 
+{
+  string? MongoConnectionUri = config["ConnectionStrings:MongoConnectionUri"];
+  if(string.IsNullOrWhiteSpace(MongoConnectionUri))
+  {
+    string errorMessage = "config[\"ConnectionStrings:MongoConnectionUri\"] was null/empty/whitespace";
+    Console.WriteLine(errorMessage);
+    return Results.NotFound(errorMessage);
+  }
+  else
+  {
+    var mongoContext = new MongoContext(MongoConnectionUri);
+    try
+    {
+      string? MongoDBAtlasDatabaseName = config["MongoDBAtlasDatabaseName"];
+      string? MongoDBAtlasCollectionName = config["MongoDBAtlasCollectionName"];
+      if(string.IsNullOrWhiteSpace(MongoDBAtlasDatabaseName) || string.IsNullOrWhiteSpace(MongoDBAtlasCollectionName))
+      {
+        string errorMessage = "config[\"MongoDBAtlasDatabaseName\"] or config[\"MongoDBAtlasCollectionName\"] was null/empty/whitespace";
+        Console.WriteLine(errorMessage);
+        return Results.InternalServerError(errorMessage);
+      }
+      else
+      {
+        var filter = Builders<FileRecord>.Filter.Eq("Name", fileDataToInsert.Name);
+        mongoContext.Upsert(MongoDBAtlasDatabaseName, MongoDBAtlasCollectionName, filter, fileDataToInsert);
+        return Results.Created("record inserted", fileDataToInsert);
+      }
+    }
+    catch(Exception ex)
+    {
+      Console.WriteLine("PostMongoFileContent error", ex.ToString());
+      return Results.InternalServerError(ex);
+    }
+  }
+})
+.WithName("PostMongoFileContent");
 
 
 app.Run();

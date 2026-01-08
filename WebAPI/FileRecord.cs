@@ -1,3 +1,5 @@
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 /// <summary>
 /// C# and F# support records which are compared by value and entirely immutable by default.
 /// VB.NET does not support records without a NuGet package to convert a struct to a record, 
@@ -9,6 +11,13 @@
 /// </param>
 public record FileRecord(string Name)
 {
+    /// <summary>
+    /// ObjectId used by MongoDB
+    /// </summary>
+    [BsonId]
+    [BsonRepresentation(BsonType.ObjectId)]
+    public ObjectId Id { get; set; }
+
     /// <summary>
     /// However, if you need mutable properties, you can define them like this.
     /// </summary>
